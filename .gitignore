@@ -6,6 +6,7 @@ target/
 dev.env
 .env
 .dockerignore
+out
 
 ### STS ###
 .apt_generated
