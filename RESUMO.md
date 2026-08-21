@@ -268,3 +268,26 @@ Evolução do exemplo, mostrando `tryAcquire` com timeout e uma forma de monitor
 
 ---
 
+## Aula 11 Locks
+
+**`ReentrantLock_1.java`**
+
+Exemplo introdutório de `Lock`/`ReentrantLock`, uma alternativa mais flexível ao `synchronized` para controlar acesso exclusivo a um recurso.
+
+- `Lock lock = new ReentrantLock()` — cria um lock explícito; funciona de forma equivalente a `synchronized` (só uma thread por vez consegue segurar o lock), mas com controle manual sobre quando adquirir/liberar.
+- `lock.lock()` — adquire o lock; se outra thread já o possui, bloqueia até ele ser liberado.
+- `lock.unlock()` — libera o lock, permitindo que outra thread aguardando consiga adquiri-lo.
+- Diferente do `synchronized` (bloco/método, liberação automática ao sair do escopo), com `Lock` a liberação é **manual** — é responsabilidade do programador chamar `unlock()`. ⚠️ Nesse exemplo específico não há `try/finally` envolvendo o lock, o que é um risco: se uma exceção ocorrer entre `lock()` e `unlock()`, o lock nunca seria liberado, travando as demais threads indefinidamente. O padrão recomendado normalmente é `lock.lock(); try { ... } finally { lock.unlock(); }`.
+- "Reentrant" (reentrante) significa que a **mesma thread** que já possui o lock pode adquiri-lo novamente (ex: chamadas recursivas ou métodos aninhados que também usam `lock()`) sem se travar a si mesma — precisa apenas chamar `unlock()` o mesmo número de vezes que chamou `lock()`.
+- Mesmo efeito prático do `synchronized`: acesso serializado à variável `i`, evitando race condition.
+
+**`ReentrantReadWriteLock_1.java`**
+
+Exemplo mostrando `ReadWriteLock`, que separa o controle de acesso em dois locks distintos: um para leitura e outro para escrita, permitindo maior paralelismo em cenários de muita leitura.
+
+- `ReadWriteLock lock = new ReentrantReadWriteLock()` — cria um par de locks associados: `readLock()` e `writeLock()`, que compartilham o mesmo estado interno mas têm regras diferentes de exclusividade.
+- `lock.writeLock()` — retorna o lock de escrita; funciona como um lock exclusivo comum (`ReentrantLock`): enquanto uma thread segura o write lock, nenhuma outra thread pode adquirir nem o write lock nem o read lock.
+- `lock.readLock()` — retorna o lock de leitura; **múltiplas threads podem segurar o read lock simultaneamente**, desde que nenhuma esteja segurando o write lock no momento. Isso permite paralelismo real entre leituras.
+- No exemplo, `r1` (escrita) incrementa `i` protegido pelo `writeLock`, enquanto `r2` (leitura) apenas lê e imprime `i` protegido pelo `readLock` — mostrando o padrão típico de uso: escrita exclusiva, leitura compartilhada.
+- Reforça o principal ganho sobre um `Lock`/`synchronized` comum: em cenários com muita leitura e pouca escrita, `ReadWriteLock` permite que várias threads leiam ao mesmo tempo sem se bloquearem mutuamente, só bloqueando de fato quando há escrita envolvida — diferente de um lock único, que sempre serializa tudo (mesmo leituras concorrentes entre si).
+- Mesmo ponto de atenção do exemplo anterior: não há `try/finally` ao redor do `lock()`/`unlock()`, o que é um risco em código de produção.
