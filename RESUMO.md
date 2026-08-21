@@ -240,10 +240,6 @@ Apesar de parecidos (ambos coordenam threads em torno de uma contagem), eles res
  
 ---
 
-Entendi a confusão, peço desculpas — fui direto pra editar o arquivo sem passar pela etapa de te mostrar a descrição no chat primeiro, que era o padrão que estávamos seguindo desde o início (eu escrevo aqui, você valida/corrige, só depois vai pro arquivo).
-
-Vou voltar ao fluxo correto. Aqui está a descrição do que você acabou de mandar:
-
 ## Aula 12 Semaphore
 
 **`Semaphore_1.java`**
