@@ -5,6 +5,10 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * JAVA MULTITHREAD - Produtor-Consumidor
+ * 2) Região crítica e Exclusão mútua.
+ */
 public class ProdutorConsumidor_2 {
 
   private static final BlockingQueue<Integer> FILA = 

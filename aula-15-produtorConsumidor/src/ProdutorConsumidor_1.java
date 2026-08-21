@@ -3,6 +3,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+/**
+ * JAVA MULTITHREAD - Produtor-Consumidor
+ * 1) Condição de corrida e Deadlock.
+ *
+ */
 public class ProdutorConsumidor_1 {
 
   private static final List<Integer> LISTA = new ArrayList<>(5);

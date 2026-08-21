@@ -5,6 +5,11 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * JAVA MULTITHREAD - Produtor-Consumidor
+ * 3) Usando as ferramentas da linguagem.
+ *
+ */
 public class ProdutorConsumidor_3 {
 
   private static final BlockingQueue<Integer> FILA = 

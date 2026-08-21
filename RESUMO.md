@@ -322,3 +322,41 @@ Exemplo de `Exchanger`, usado para fazer duas threads trocarem dados entre si nu
 - Útil em cenários onde duas threads processam dados em paralelo e periodicamente precisam trocar buffers/resultados entre si (ex: um produtor enche um buffer enquanto outro consome o buffer anterior, e a cada rodada trocam de buffer).
 
 ---
+
+## Aula 14 - Produtor/Consumidor
+
+**`ProdutorConsumidor_1.java`** — *"Condição de corrida e Deadlock"*
+
+Primeira versão do clássico problema produtor-consumidor, propositalmente **incorreta**, usada para expor os problemas de fazer isso sem nenhuma sincronização.
+
+- `List<Integer> LISTA` (um `ArrayList` comum) compartilhada entre as threads `produtor` e `consumidor`, **sem nenhuma proteção** (`ArrayList` não é thread-safe — ver aula-03).
+- `boolean produzindo` / `boolean consumindo` — flags de controle **sem `volatile`**, compartilhadas entre as duas threads; sofrem do mesmo problema de visibilidade discutido na aula-06 (uma thread pode não "ver" a mudança feita pela outra a tempo).
+- Lógica de controle manual: quando a lista enche (5 itens), o produtor se pausa (`produzindo = false`) e acorda o consumidor (`consumindo = true`); quando a lista esvazia, o consumidor se pausa e acorda o produtor — um "revezamento" manual sem uso de nenhuma ferramenta de sincronização (sem lock, sem wait/notify, sem `BlockingQueue`).
+- `LISTA.stream().findFirst()` + `LISTA.remove(n)` — forma de "espiar" e remover o primeiro elemento; combinado com a falta de sincronização, é vulnerável a race condition (duas threads podem ler o mesmo estado da lista antes de uma delas conseguir modificá-la).
+- `Janelas.monitore(...)` — utilitário externo (auxiliar do curso, fora do escopo de multithread em si) usado para exibir visualmente o tamanho da lista em tempo real.
+- Serve como exemplo didático do problema (nome da aula já entrega: **condição de corrida** pela falta de proteção da lista, e risco de **deadlock/travamento lógico** — se as flags `produzindo`/`consumindo` ficarem dessincronizadas por causa da falta de visibilidade/atomicidade, as duas threads podem acabar presas em "dormindo" simultaneamente, já que a condição de despertar uma depende do estado visto pela outra).
+
+**`ProdutorConsumidor_2.java`** — *"Região crítica e Exclusão mútua"*
+
+Evolução corrigindo parte dos problemas, introduzindo lock explícito e coleção thread-safe.
+
+- Troca do `ArrayList` por `BlockingQueue<Integer>` (`LinkedBlockingDeque(5)`, com capacidade limitada de 5) — já traz thread-safety nativa (ver aula-04), embora aqui a fila ainda seja manipulada com métodos não bloqueantes (`add`, `remove`, `stream().findFirst()`), então essa thread-safety nativa é reforçada, mas não é o mecanismo principal de coordenação usado aqui.
+- `volatile boolean produzindo` / `volatile boolean consumindo` — agora com `volatile` (ver aula-06), corrigindo o problema de visibilidade da versão anterior.
+- `Lock LOCK = new ReentrantLock()` (ver aula-11) — usado para proteger a **região crítica**: o bloco que lê/altera o tamanho da fila e decide se deve pausar/retomar produção ou consumo. `LOCK.lock()` / `LOCK.unlock()` garantem exclusão mútua entre produtor e consumidor nesse trecho, evitando que ambos mexam na fila e nas flags ao mesmo tempo de forma inconsistente.
+- ⚠️ Mesmo ponto de atenção de exemplos anteriores: não há `try/finally` em volta do `lock()`/`unlock()` — se uma exceção ocorrer no meio do bloco, o lock ficaria travado para sempre.
+- Ainda usa o mesmo padrão de "flags manuais" para pausar/retomar threads (em vez de usar `wait()`/`notify()` ou uma fila bloqueante de fato) — o nome da aula ("região crítica e exclusão mútua") indica que o foco aqui é resolver a condição de corrida da aula anterior, não necessariamente eliminar o busy-wait das threads "dormindo" em loop.
+
+**`ProdutorConsumidor_3.java`** — *"Usando as ferramentas da linguagem"*
+
+Versão final, mais idiomática, aproveitando os recursos bloqueantes nativos do Java para eliminar a necessidade de flags manuais e locks explícitos.
+
+- Volta a usar `BlockingQueue<Integer>` (`LinkedBlockingDeque(5)`), mas dessa vez explorando seus métodos **bloqueantes** de verdade:
+  - `FILA.put(numero)` — insere na fila; se estiver cheia (5 itens), **bloqueia automaticamente** até haver espaço (sem precisar de flag `produzindo` manual).
+  - `FILA.take()` — remove da fila; se estiver vazia, **bloqueia automaticamente** até haver algum item (sem precisar de flag `consumindo` manual).
+- Isso elimina por completo a necessidade das flags `produzindo`/`consumindo` e do `Lock` explícito das versões anteriores — a própria `BlockingQueue` já resolve tanto a exclusão mútua quanto a espera condicional (equivalente ao que seria feito manualmente com `wait()`/`notify()`).
+- `Executors.newScheduledThreadPool(2)` + `scheduleWithFixedDelay(produtor, 0, 10, TimeUnit.MILLISECONDS)` / mesmo para `consumidor` — em vez de `Thread` manual com `while(true)`, usa o executor agendado (ver aula-07) pra repetir as tarefas de produção e consumo continuamente, a cada 10ms (mais o tempo que a própria tarefa levar, já que é `scheduleWithFixedDelay`).
+- `simulaProcessamento()` vs `simulaProcessamentoLento()` — duas velocidades de simulação (até 40ms vs até 400ms); os comentários no código sugerem que a ideia é alternar entre elas (ex: produtor lento e consumidor rápido, ou vice-versa) para observar visualmente como a `BlockingQueue` absorve o descompasso de velocidade entre as duas pontas, bloqueando automaticamente quem estiver mais rápido.
+- Reforça a mensagem central da aula: as ferramentas prontas da linguagem (`BlockingQueue`) resolvem o problema produtor-consumidor de forma muito mais simples e segura do que reimplementar manualmente com flags + locks.
+
+---
+
