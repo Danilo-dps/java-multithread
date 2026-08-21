@@ -198,7 +198,7 @@ Evolução mostrando a característica **cíclica** do `CyclicBarrier` (diferent
 
 ---
 
-## aula 11 - CountDownlatch
+## Aula 11 - CountDownlatch
 
 **`CountDownLatch_1.java`**
 
@@ -240,7 +240,7 @@ Apesar de parecidos (ambos coordenam threads em torno de uma contagem), eles res
  
 ---
 
-## Aula 12 Semaphore
+## Aula 12 - Semaphore
 
 **`Semaphore_1.java`**
 
@@ -268,7 +268,7 @@ Evolução do exemplo, mostrando `tryAcquire` com timeout e uma forma de monitor
 
 ---
 
-## Aula 11 Locks
+## Aula 13 - Locks
 
 **`ReentrantLock_1.java`**
 
@@ -291,3 +291,34 @@ Exemplo mostrando `ReadWriteLock`, que separa o controle de acesso em dois locks
 - No exemplo, `r1` (escrita) incrementa `i` protegido pelo `writeLock`, enquanto `r2` (leitura) apenas lê e imprime `i` protegido pelo `readLock` — mostrando o padrão típico de uso: escrita exclusiva, leitura compartilhada.
 - Reforça o principal ganho sobre um `Lock`/`synchronized` comum: em cenários com muita leitura e pouca escrita, `ReadWriteLock` permite que várias threads leiam ao mesmo tempo sem se bloquearem mutuamente, só bloqueando de fato quando há escrita envolvida — diferente de um lock único, que sempre serializa tudo (mesmo leituras concorrentes entre si).
 - Mesmo ponto de atenção do exemplo anterior: não há `try/finally` ao redor do `lock()`/`unlock()`, o que é um risco em código de produção.
+
+
+---
+
+## Aula 14 - SynchronousQueue
+
+**`SynchronousQueue_1.java`**
+
+Exemplo de `SynchronousQueue`, uma fila "sem capacidade" que serve como ponto de encontro (handoff) direto entre uma thread produtora e uma consumidora.
+
+- `new SynchronousQueue<String>()` — cria uma fila que **não armazena elementos**; cada inserção precisa ser imediatamente "casada" com uma remoção correspondente, e vice-versa. Diferente de `LinkedBlockingQueue` (aula-04), aqui não existe buffer interno.
+- `fila.put(elemento)` — insere um elemento, mas **bloqueia** até que outra thread execute `take()` para retirá-lo naquele exato momento. A operação só "completa" quando existe um par put/take se encontrando.
+- `fila.take()` — retira um elemento, mas **bloqueia** até que outra thread execute `put()` colocando algo. Simetricamente, só completa quando há esse encontro.
+- O comentário no código já resume bem o conceito: a troca só acontece quando as duas ações (inserir e retirar) acontecem em par — uma thread não consegue "deixar" algo na fila e seguir em frente sozinha; ela fica travada até alguém pegar.
+- `FILA.poll(timeout, unit)` (comentado) — variante não bloqueante com timeout para tentar retirar um elemento; se ninguém colocar nada dentro do prazo, retorna `null` em vez de bloquear indefinidamente.
+- `FILA.offer(elemento, timeout, unit)` (comentado) — variante equivalente para inserção: tenta colocar o elemento, mas desiste após o timeout se ninguém retirar a tempo.
+- Tratamento de `InterruptedException` com `Thread.currentThread().interrupt()` — mesmo padrão de boa prática recorrente nas aulas anteriores.
+- Diferente de todas as outras filas vistas até aqui (aula-04), o propósito da `SynchronousQueue` não é armazenar dados para consumo posterior, e sim **sincronizar a transferência direta** de um dado entre exatamente duas threads — útil em padrões produtor-consumidor onde você quer que o produtor espere até ter certeza de que alguém recebeu o item (handoff síncrono), sem acúmulo em buffer.
+
+**`Exchanger_1.java`**
+
+Exemplo de `Exchanger`, usado para fazer duas threads trocarem dados entre si num ponto de encontro — cada uma entrega um valor e recebe o valor que a outra trouxe.
+
+- `new Exchanger<String>()` — cria o ponto de troca; funciona para exatamente **duas threads por vez** se encontrando (diferente da `SynchronousQueue`, que separa os papéis em "quem põe" e "quem tira", aqui as duas threads fazem a mesma ação: cada uma entrega algo e recebe algo).
+- `exchanger.exchange(valor)` — bloqueia a thread até que outra thread também chame `exchange(...)`; quando isso acontece, os dois valores são trocados automaticamente — cada thread recebe como retorno o valor que a **outra** passou como argumento.
+- No exemplo: `r1` chama `exchange("Toma isso!")` e `r2` chama `exchange("Obrigado!")`; ao se encontrarem, `r1` recebe de volta `"Obrigado!"` (o que `r2` mandou) e `r2` recebe `"Toma isso!"` (o que `r1` mandou) — uma troca simétrica de mão dupla.
+- Tratamento de `InterruptedException` com `Thread.currentThread().interrupt()` — mesmo padrão recorrente de boa prática das aulas anteriores.
+- Diferença chave para `SynchronousQueue`: lá o fluxo é unidirecional por operação (`put` entrega, `take` recebe — papéis distintos); no `Exchanger`, o fluxo é **bidirecional numa única chamada** — as duas threads entregam e recebem ao mesmo tempo, dentro da mesma chamada de `exchange()`.
+- Útil em cenários onde duas threads processam dados em paralelo e periodicamente precisam trocar buffers/resultados entre si (ex: um produtor enche um buffer enquanto outro consome o buffer anterior, e a cada rodada trocam de buffer).
+
+---
